@@ -191,24 +191,20 @@ double NeuralNetwork::contribute(int nodeId, const double& y, const double& p) {
 // STUDENT TODO: IMPLEMENT
 bool NeuralNetwork::update() {
     // apply the derivative contributions
-
-    // traverse the graph in anyway you want.
-    // Each node has a delta term
-    // Each connection has a delta term
-
-    // use the formulas for each update
-    // bias update: bias = bias - (learningRate * delta)
-    // weight update: weight = weight - (learningRate * delta)
-    // reset the delta term for each node and connection to zero.
+    // use average delta over the batch
 
     for (int i = 0; i < nodes.size(); i++) {
-        nodes.at(i)->bias = nodes.at(i)->bias - (learningRate * nodes.at(i)->delta);
+        if (batchSize > 0) {
+            nodes.at(i)->bias = nodes.at(i)->bias - (learningRate * (nodes.at(i)->delta / batchSize));
+        }
         nodes.at(i)->delta = 0;
     }
 
     for (int i = 0; i < adjacencyList.size(); i++) {
         for (auto it = adjacencyList.at(i).begin(); it != adjacencyList.at(i).end(); it++) {
-            it->second.weight = it->second.weight - (learningRate * it->second.delta);
+            if (batchSize > 0) {
+                it->second.weight = it->second.weight - (learningRate * (it->second.delta / batchSize));
+            }
             it->second.delta = 0;
         }
     }
