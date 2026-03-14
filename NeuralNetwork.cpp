@@ -139,7 +139,8 @@ bool NeuralNetwork::contribute(double y, double p) {
         contribute(inputNodeIds.at(i), y, p);
     }
 
-    // reset node activations for the next example, but preserve deltas and batchSize
+    // Clear node values for the next forward pass,
+    // but preserve accumulated deltas and batchSize.
     for (int i = 0; i < nodes.size(); i++) {
         nodes.at(i)->preActivationValue = 0;
         nodes.at(i)->postActivationValue = 0;
@@ -197,18 +198,25 @@ double NeuralNetwork::contribute(int nodeId, const double& y, const double& p) {
 
 // STUDENT TODO: IMPLEMENT
 bool NeuralNetwork::update() {
+    // apply the derivative contributions
+
+    // traverse the graph in anyway you want.
+    // Each node has a delta term
+    // Each connection has a delta term
+
+    // use the formulas for each update
+    // bias update: bias = bias - (learningRate * delta)
+    // weight update: weight = weight - (learningRate * delta)
+    // reset the delta term for each node and connection to zero.
+
     for (int i = 0; i < nodes.size(); i++) {
-        if (batchSize > 0) {
-            nodes.at(i)->bias = nodes.at(i)->bias - (learningRate * (nodes.at(i)->delta / batchSize));
-        }
+        nodes.at(i)->bias = nodes.at(i)->bias - (learningRate * nodes.at(i)->delta);
         nodes.at(i)->delta = 0;
     }
 
     for (int i = 0; i < adjacencyList.size(); i++) {
         for (auto it = adjacencyList.at(i).begin(); it != adjacencyList.at(i).end(); it++) {
-            if (batchSize > 0) {
-                it->second.weight = it->second.weight - (learningRate * (it->second.delta / batchSize));
-            }
+            it->second.weight = it->second.weight - (learningRate * it->second.delta);
             it->second.delta = 0;
         }
     }
@@ -438,12 +446,17 @@ void NeuralNetwork::visitContributeNode(int vId, double& outgoingContribution) {
 // incomingContribution is the contribution returned by the recursive call on the neighbor (next layer).
 // This function:
 //   1. Adds weight * incomingContribution to outgoingContribution
+//      (this node's share of the error flowing back from the neighbor)
 //   2. Accumulates the weight gradient into c.delta
+//      (how much should this weight change? proportional to incomingContribution * this node's output)
 void NeuralNetwork::visitContributeNeighbor(Connection& c, double& incomingContribution, double& outgoingContribution) {
     NodeInfo* v = nodes.at(c.source);
+    // update outgoingContribution
     outgoingContribution += c.weight * incomingContribution;
-    c.delta += incomingContribution * v->postActivationValue;
 
+    // accumulate weight derivative
+    c.delta += incomingContribution * v->postActivationValue;
+    // visualization use
     if (viz::isTracing()) {
         viz::traceEdgeState(0, "backward",
                             c.source,
@@ -460,6 +473,7 @@ void NeuralNetwork::visitContributeNeighbor(Connection& c, double& incomingContr
 }
 
 void NeuralNetwork::flush() {
+    // set every node value to 0 to refresh computation.
     for (int i = 0; i < nodes.size(); i++) {
         nodes.at(i)->postActivationValue = 0;
         nodes.at(i)->preActivationValue = 0;
@@ -496,9 +510,10 @@ double NeuralNetwork::assess(DataLoader dl) {
     return correct / count;
 }
 
+
 void NeuralNetwork::saveModel(string filename) {
     ofstream fout(filename);
-
+    
     fout << layers.size() << " " << getNodes().size() << endl;
     for (int i = 0; i < layers.size(); i++) {
         NodeInfo* layerNode = getNodes().at(layers.at(i).at(0));
@@ -527,6 +542,8 @@ void NeuralNetwork::saveModel(string filename) {
     fout << biasStream.str();
 
     fout.close();
+
+
 }
 
 ostream& operator<<(ostream& out, const NeuralNetwork& nn) {
@@ -537,6 +554,7 @@ ostream& operator<<(ostream& out, const NeuralNetwork& nn) {
         }
         out << endl;
     }
+    // outputs the nn in dot format
     out << static_cast<const Graph&>(nn) << endl;
     return out;
 }
